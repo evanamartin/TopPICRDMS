@@ -78,27 +78,29 @@ cv_frac <- function (x, x_cluster) {
     dplyr::select(Gene, Dataset, Proteoform, cluster)
 
   x2 <- x %>%
-    dplyr::select(Dataset, Gene, `Feature intensity`, ProjID, CV, Fraction) %>%
-    dplyr::inner_join(output) %>%
-    dplyr::mutate(gcc = paste(Gene, cluster, sep = "_")) %>%
-    dplyr::select(-Gene, -cluster)
+    dplyr::select(Dataset, Gene, Proteoform, `Feature intensity`, ProjID, CV,
+                  Fraction) %>%
+    dplyr::inner_join(output)
 
   rep_cv_fraction <- x2 %>%
-    dplyr::group_by(ProjID, gcc, CV, Fraction) %>%
+    dplyr::group_by(ProjID, Gene, cluster, CV, Fraction) %>%
     dplyr::summarize(max_int = max(`Feature intensity`)) %>%
-    dplyr::group_by(gcc, CV, Fraction) %>%
+    dplyr::group_by(Gene, cluster, CV, Fraction) %>%
     dplyr::summarize(n_obs = dplyr::n(),
                      int = sum(max_int)) %>%
-    dplyr::group_by(gcc) %>%
+    dplyr::group_by(Gene, cluster) %>%
     dplyr::slice(which.max(n_obs))
 
   x_rep <- x2 %>%
-    dplyr::group_by(ProjID, gcc, CV, Fraction) %>%
+    dplyr::group_by(ProjID, Gene, cluster, CV, Fraction) %>%
     dplyr::summarize(max_int = max(`Feature intensity`)) %>%
     dplyr::semi_join(rep_cv_fraction) %>%
     dplyr::ungroup() %>%
-    dplyr::select(ProjID, gcc, max_int) %>%
-    dplyr::rename(`Feature intensity` = max_int)
+    dplyr::select(ProjID, Gene, cluster, max_int) %>%
+    dplyr::rename(`Feature intensity` = max_int) %>%
+    dplyr::mutate(gcc = paste(Gene, cluster, sep = "_")) %>%
+    dplyr::select(-Gene, -cluster) %>%
+    dplyr::relocate(`Feature intensity`, .after = gcc)
 
   return (x_rep)
 
